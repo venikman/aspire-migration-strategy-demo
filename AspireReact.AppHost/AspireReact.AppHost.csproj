@@ -1,8 +1,8 @@
-<Project Sdk="Aspire.AppHost.Sdk/13.0.0">
+<Project Sdk="Aspire.AppHost.Sdk/9.5.0">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <UserSecretsId>aspire-react-apphost</UserSecretsId>
@@ -15,7 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aspire.Hosting.JavaScript" Version="13.0.2" />
+    <PackageReference Include="Aspire.Hosting.JavaScript" Version="9.5.0" />
   </ItemGroup>
 
 </Project>
