@@ -62,9 +62,10 @@
 │  REASONS:                                                   │
 │  • No migration cost - start with latest                   │
 │  • Built-in resilience patterns (one line vs 50)           │
-│  • Environment-based sampling (90% cost savings)            │
 │  • First-class Vite/React support                          │
 │  • .WaitFor() service dependencies                         │
+│  • Environment-based sampling (10% prod, 100% dev)         │
+│  • Separate health endpoints (/health, /alive)             │
 │                                                             │
 │  RISKS:                                                     │
 │  ⚠️  .NET 10 is preview (but production-ready)             │
@@ -91,9 +92,9 @@
 │  └─ Answer: .NET 10 LTS expected Nov 2025                  │
 │                                                             │
 │  🤔 DECISION POINT:                                         │
-│  ┌─────────────────────────────────────┐                   │
-│  │ Can you wait 10-11 months?         │                   │
-│  └───────┬─────────────────────────────┘                   │
+│  ┌─────────────────────────────────────────┐               │
+│  │ Can you wait 10-11 months?             │               │
+│  └───────┬─────────────────────────────────┘               │
 │          │                                                  │
 │    ┌─────┴─────┐                                           │
 │   YES          NO                                           │
@@ -113,31 +114,34 @@ STRATEGY A: Stay on Aspire 9.5 (Conservative)
   • One big migration later (.NET 9→10 + Aspire 9.5→13+)
 
 ❌ Cons:
-  • Miss out on cost savings ($900/month)
-  • Manual Polly configuration
-  • Slower dashboard (40% slower)
+  • Manual Polly configuration (~50 lines)
+  • Static 100% sampling (higher telemetry volume)
+  • Slower dashboard performance
   • No .WaitFor() dependencies
-  • Higher telemetry costs (100% sampling)
+  • No AddViteApp for modern frontends
+  • Single /health endpoint only
 
 ⏱️  Timeline:
   • Now: Stay on .NET 9 + Aspire 9.5
   • Nov 2025: Migrate to .NET 10 LTS + Aspire 13+
   • Total migrations: 1 (in 10-11 months)
 
-💰 Cost:
-  • Migration effort: 0 days (now), 5-7 days (Nov 2025)
-  • Telemetry cost: $900/month × 11 = $9,900 extra
+🔧 Maintenance:
+  • Manual Polly: ~50 lines to maintain
+  • HTTPS-only development (no HTTP fallback)
+  • No container publishing helpers
 
 ─────────────────────────────────────────────────────────────
 
 STRATEGY B: Migrate to Aspire 13 Now (Aggressive)
 ──────────────────────────────────────────────────
 ✅ Pros:
-  • Immediate cost savings ($900/month)
-  • Better developer experience (40% faster dashboard)
-  • Built-in resilience (one line of code)
+  • Better developer experience (faster dashboard)
+  • Built-in resilience (one line: AddStandardResilienceHandler)
   • .WaitFor() service dependencies
-  • Only one migration (.NET 9 supported by Aspire preview)
+  • Environment-based sampling (reduced telemetry volume)
+  • AddViteApp for modern React/Vite projects
+  • Separate /health and /alive endpoints
 
 ❌ Cons:
   • Migration effort now (5-7 days)
@@ -149,21 +153,22 @@ STRATEGY B: Migrate to Aspire 13 Now (Aggressive)
   • Nov 2025: Upgrade to .NET 10 LTS (minor upgrade)
   • Total migrations: 1 (now) + 1 minor upgrade (Nov 2025)
 
-💰 Cost:
-  • Migration effort: 5-7 days (now), 1 day (Nov 2025)
-  • Telemetry savings: $900/month × 11 = $9,900 saved
-  • ROI: Pays for itself in Week 1
+🔧 Maintenance:
+  • One-line resilience: http.AddStandardResilienceHandler()
+  • HTTP allowed in development (easier debugging)
+  • Container publishing: .PublishAsDockerFile()
 
 ─────────────────────────────────────────────────────────────
 
 🎯 RECOMMENDATION for .NET 9 projects:
 
 IF:
-  • Production telemetry costs > $500/month → STRATEGY B
-  • High traffic application → STRATEGY B
-  • Need resilience patterns → STRATEGY B
+  • High-traffic application → STRATEGY B
+  • Need modern resilience patterns → STRATEGY B
+  • Building new features for 6+ months → STRATEGY B
   • Risk-averse team → STRATEGY A
   • Can wait for .NET 10 LTS → STRATEGY A
+  • Small internal tool → STRATEGY A
 ```
 
 ---
@@ -192,7 +197,7 @@ IF:
 │  ┌───────────────────────────────────────────┐             │
 │  │ Phase 2: .NET 9 → .NET 10 (3-6 months)   │             │
 │  │   • Migrate to Aspire 13                  │             │
-│  │   • Gain cost savings                     │             │
+│  │   • Gain better developer experience      │             │
 │  │   • Duration: 1-2 weeks                   │             │
 │  └───────────────────────────────────────────┘             │
 │                                                             │
@@ -283,11 +288,11 @@ Choose your risk profile:
 │  • Business-critical but flexible                          │
 │  • Good CI/CD and testing                                  │
 │  • Can roll back if needed                                 │
-│  • Cost-conscious                                          │
+│  • Value developer productivity                            │
 │                                                             │
 │  → STRATEGY: Phased migration                              │
 │  → Upgrade to .NET 10 preview now                          │
-│  → Migrate to Aspire 13 for cost savings                   │
+│  → Migrate to Aspire 13 for better DX                      │
 │  → Upgrade to .NET 10 LTS in Nov 2025                      │
 │                                                             │
 ├─────────────────────────────────────────────────────────────┤
@@ -310,65 +315,6 @@ Choose your risk profile:
 
 ---
 
-## 💰 Cost-Based Decision
-
-Use this if telemetry costs are a primary concern:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│            MONTHLY TELEMETRY COST CALCULATOR                │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  Step 1: Calculate your current costs                      │
-│  ───────────────────────────────────                        │
-│  Requests/day: ___________                                 │
-│  Services:     ___________                                 │
-│  Spans/request: __________ (avg 5-10)                      │
-│                                                             │
-│  Daily spans = Requests × Services × Spans/request         │
-│  Monthly spans = Daily spans × 30                          │
-│                                                             │
-│  Cost (APM) = Monthly spans × $0.02 per 1000 spans        │
-│               (typical Application Insights pricing)       │
-│                                                             │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  Step 2: Calculate Aspire 13 savings                       │
-│  ────────────────────────────────                           │
-│  Aspire 9.5: 100% sampling                                 │
-│  Aspire 13:   10% sampling (production)                    │
-│                                                             │
-│  Savings = Current cost × 0.90  (90% reduction)            │
-│                                                             │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  Step 3: Decision threshold                                │
-│  ──────────────────────────                                 │
-│  IF Monthly savings > $300                                 │
-│  THEN Migrate now (ROI < 2 weeks)                          │
-│                                                             │
-│  IF Monthly savings > $1000                                │
-│  THEN Migrate ASAP (ROI < 1 week)                          │
-│                                                             │
-│  ELSE Stay on 9.5 until .NET 10 LTS                        │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-
-Example Calculation:
-────────────────────
-10,000 requests/day × 5 services × 5 spans = 250,000 spans/day
-250,000 × 30 = 7,500,000 spans/month
-
-Aspire 9.5 cost: 7,500,000 ÷ 1000 × $0.02 = $1,500/month
-Aspire 13 cost:    750,000 ÷ 1000 × $0.02 = $150/month
-Savings: $1,350/month
-
-Migration effort: 5 days × $800/day = $4,000
-ROI: 4,000 ÷ 1,350 = 2.96 months ✅ Migrate now!
-```
-
----
-
 ## 🎯 Final Decision Flowchart
 
 ```
@@ -376,27 +322,27 @@ ROI: 4,000 ÷ 1,350 = 2.96 months ✅ Migrate now!
                            │
                            ▼
               ┌────────────────────────┐
-              │ Monthly telemetry      │
-              │ cost > $500?           │
+              │ Building new features  │
+              │ for 6+ months?         │
               └─────┬──────────────────┘
                     │
         ┌───────────┴───────────┐
        YES                      NO
         │                        │
         ▼                        ▼
-  Migrate to           ┌─────────────────┐
-  Aspire 13 NOW        │ Risk tolerance? │
-  (Cost savings)       └────┬────────────┘
-                            │
-                   ┌────────┼────────┐
-                  LOW    MEDIUM    HIGH
-                   │        │        │
-                   ▼        ▼        ▼
-                Stay on  Phased   Migrate
-                9.5      Migration  NOW
-                until    (2-step)
-                .NET 10
-                LTS
+  Consider            ┌─────────────────┐
+  Aspire 13           │ Risk tolerance? │
+  (Better DX)         └────┬────────────┘
+                           │
+                  ┌────────┼────────┐
+                 LOW    MEDIUM    HIGH
+                  │        │        │
+                  ▼        ▼        ▼
+               Stay on  Phased   Migrate
+               9.5      Migration  NOW
+               until    (2-step)
+               .NET 10
+               LTS
 ```
 
 ---
@@ -409,20 +355,24 @@ Based on your decision, use this checklist:
 
 - [ ] Read [ADR_ASPIRE_MIGRATION_9_TO_13.md](../ADR_ASPIRE_MIGRATION_9_TO_13.md)
 - [ ] Install .NET 10 SDK on all dev machines
-- [ ] Run migration scripts (when available)
 - [ ] Update CI/CD pipelines (.NET SDK version)
 - [ ] Test in staging environment
-- [ ] Monitor telemetry costs for 1 week
-- [ ] Train team on new Aspire 13 features
+- [ ] Monitor telemetry volume for 1 week
+- [ ] Train team on new Aspire 13 features:
+  - [ ] AddStandardResilienceHandler()
+  - [ ] AddViteApp() for frontends
+  - [ ] .WaitFor() dependencies
+  - [ ] Environment-based sampling
 
 ### ✅ If Staying on Aspire 9.5 (for now)
 
 - [ ] Document decision (use this decision tree as rationale)
 - [ ] Set calendar reminder for .NET 10 LTS (Nov 2025)
 - [ ] Bookmark this repo for migration reference
-- [ ] Consider manual implementation of Aspire 13 patterns:
+- [ ] Maintain manual Polly configuration
+- [ ] Consider implementing Aspire 13 patterns manually:
   - [ ] Environment-based sampling
-  - [ ] Standard resilience handlers
+  - [ ] Separate health endpoints
   - [ ] Service dependency management
 - [ ] Monitor .NET 10 LTS release notes
 
@@ -436,9 +386,9 @@ Based on your decision, use this checklist:
    - Yes → Consider migrating
    - No → Stay on 9.5
 
-2. **Are we spending > $500/month on telemetry?**
-   - Yes → Migrate (immediate ROI)
-   - No → Stay on 9.5
+2. **Are we maintaining 50+ lines of manual Polly configuration?**
+   - Yes → Aspire 13 reduces to 1 line
+   - No → Less benefit from migration
 
 3. **Is our production environment stable and testable?**
    - Yes → Lower risk to migrate
@@ -449,8 +399,16 @@ Based on your decision, use this checklist:
    - No → Stay on 9.5 until infrastructure improves
 
 5. **Is our team comfortable with preview .NET versions?**
-   - Yes → Migrate
+   - Yes → Migrate now
    - No → Wait for .NET 10 LTS (Nov 2025)
+
+6. **Do we need modern frontend tooling (Vite)?**
+   - Yes → Aspire 13 has AddViteApp()
+   - No → Aspire 9.5 AddNpmApp is fine
+
+7. **Is telemetry volume becoming a concern?**
+   - Yes → Aspire 13's environment-based sampling helps
+   - No → Less urgent to migrate
 
 ---
 
@@ -459,7 +417,7 @@ Based on your decision, use this checklist:
 - Review the [ADR](../ADR_ASPIRE_MIGRATION_9_TO_13.md) for detailed analysis
 - Check the [Version Comparison](../ASPIRE_VERSION_COMPARISON.md) for visual guides
 - See [Feature Comparison](./feature-implementation-comparison.md) for code examples
-- Use the [Cost Calculator](../tools/aspire-cost-calculator.xlsx) for financial analysis
+- Compare branches: **main** (Aspire 13) vs **aspire-9.5-baseline** (Aspire 9.5)
 
 ---
 
