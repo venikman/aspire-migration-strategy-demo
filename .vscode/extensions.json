@@ -1,0 +1,17 @@
+{
+  "recommendations": [
+    // Marksman - Markdown language server
+    "artempyanykh.marksman",
+
+    // C# / .NET development
+    "ms-dotnettools.csdevkit",
+    "ms-dotnettools.csharp",
+
+    // Aspire support
+    "ms-dotnettools.dotnet-aspire",
+
+    // TypeScript/React
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode"
+  ]
+}

@@ -1,0 +1,34 @@
+# Marksman Language Server Configuration
+# https://github.com/artempyanykh/marksman
+
+[core]
+# Enable markdown link checking
+markdown.file_extensions = ["md", "markdown"]
+
+# Text synchronization mode
+# - full: Send full document on each change (default)
+# - incremental: Send only changed parts
+text_sync = "full"
+
+[core.diagnostics]
+# Enable diagnostics (linting)
+enabled = true
+
+[core.completion]
+# Enable auto-completion
+enabled = true
+
+# Wiki-style link completion
+wiki.style = "file-name"
+
+[core.markdown]
+# Heading style for auto-generated TOC
+# - atx: # Heading
+# - setext: Heading with underlines
+heading.style = "atx"
+
+# Treat these patterns as external links (don't check for broken links)
+external_refs = [
+  "https://**",
+  "http://**",
+]

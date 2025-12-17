@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="AspireReact.AppHost\AspireReact.AppHost.csproj" />
+  <Project Path="AspireReact.ServiceDefaults\AspireReact.ServiceDefaults.csproj" />
+  <Project Path="AspireReact.Api\AspireReact.Api.csproj" />
+</Solution>

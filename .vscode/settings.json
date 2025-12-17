@@ -1,0 +1,39 @@
+{
+  // Markdown settings
+  "[markdown]": {
+    "editor.defaultFormatter": "artempyanykh.marksman",
+    "editor.wordWrap": "on",
+    "editor.quickSuggestions": {
+      "comments": "on",
+      "strings": "on",
+      "other": "on"
+    }
+  },
+
+  // Marksman language server settings
+  "marksman.enabled": true,
+
+  // Show diagnostics (linting errors/warnings)
+  "marksman.diagnostics.enabled": true,
+
+  // Enable Markdown link validation
+  "markdown.validate.enabled": true,
+  "markdown.validate.fileLinks.enabled": "warning",
+  "markdown.validate.fragmentLinks.enabled": "warning",
+  "markdown.validate.referenceLinks.enabled": "warning",
+
+  // Files to exclude from workspace
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/bin": true,
+    "**/obj": true,
+    "**/.aspire": true
+  },
+
+  // .NET settings
+  "dotnet.defaultSolution": "AspireReact.slnx",
+
+  // Prettier settings for markdown
+  "prettier.proseWrap": "preserve",
+  "prettier.printWidth": 100
+}
