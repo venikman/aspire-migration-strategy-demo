@@ -1,0 +1,238 @@
+# Azure DevOps Pipeline for .NET 9 + Aspire 9.5
+#
+# This pipeline demonstrates CI/CD for an Aspire 9.5 application
+
+trigger:
+  branches:
+    include:
+      - aspire-9.5-baseline  # Aspire 9.5 branch
+  paths:
+    include:
+      - '**/*.cs'
+      - '**/*.csproj'
+      - '**/package.json'
+      - '.azure-pipelines/aspire-9.5-pipeline.yml'
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  buildConfiguration: 'Release'
+  dotnetSdkVersion: '9.0.x'
+  aspireVersion: '9.5.0'
+  nodeVersion: '18.x'
+
+stages:
+  - stage: Build
+    displayName: 'Build and Test'
+    jobs:
+      - job: BuildJob
+        displayName: 'Build Application'
+        steps:
+          # Install .NET 9 SDK
+          - task: UseDotNet@2
+            displayName: 'Install .NET 9 SDK'
+            inputs:
+              version: $(dotnetSdkVersion)
+              packageType: sdk
+
+          # Install Node.js for React frontend
+          - task: NodeTool@0
+            displayName: 'Install Node.js'
+            inputs:
+              versionSpec: $(nodeVersion)
+
+          # Restore .NET dependencies
+          - task: DotNetCoreCLI@2
+            displayName: 'Restore NuGet packages'
+            inputs:
+              command: 'restore'
+              projects: '**/*.csproj'
+
+          # Install frontend dependencies
+          - script: |
+              cd AspireReact.React
+              npm ci
+            displayName: 'Install frontend dependencies'
+
+          # Build .NET projects
+          - task: DotNetCoreCLI@2
+            displayName: 'Build solution'
+            inputs:
+              command: 'build'
+              projects: 'AspireReact.slnx'
+              arguments: '--configuration $(buildConfiguration) --no-restore'
+
+          # Build React frontend
+          - script: |
+              cd AspireReact.React
+              npm run build
+            displayName: 'Build React frontend'
+
+          # Run unit tests
+          - task: DotNetCoreCLI@2
+            displayName: 'Run unit tests'
+            inputs:
+              command: 'test'
+              projects: '**/*Tests.csproj'
+              arguments: '--configuration $(buildConfiguration) --no-build --logger trx'
+              publishTestResults: true
+
+          # Publish test results
+          - task: PublishTestResults@2
+            displayName: 'Publish test results'
+            inputs:
+              testResultsFormat: 'VSTest'
+              testResultsFiles: '**/*.trx'
+              mergeTestResults: true
+            condition: succeededOrFailed()
+
+          # Publish .NET artifacts
+          - task: DotNetCoreCLI@2
+            displayName: 'Publish API'
+            inputs:
+              command: 'publish'
+              publishWebProjects: false
+              projects: 'AspireReact.Api/AspireReact.Api.csproj'
+              arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)/api'
+              zipAfterPublish: true
+
+          # Publish React artifacts
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish React artifacts'
+            inputs:
+              PathtoPublish: 'AspireReact.React/dist'
+              ArtifactName: 'frontend'
+              publishLocation: 'Container'
+
+          # Publish API artifacts
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish API artifacts'
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)/api'
+              ArtifactName: 'api'
+              publishLocation: 'Container'
+
+  - stage: Deploy_Staging
+    displayName: 'Deploy to Staging'
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/aspire-9.5-baseline'))
+    jobs:
+      - deployment: DeployStaging
+        displayName: 'Deploy to Staging Environment'
+        environment: 'staging'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                # Download artifacts
+                - download: current
+                  artifact: api
+
+                - download: current
+                  artifact: frontend
+
+                # ⚠️  Aspire 9.5 Limitation: Manual configuration needed
+                # No automatic manifest generation - must manually deploy containers
+
+                # Deploy API to Azure App Service (example)
+                - task: AzureWebApp@1
+                  displayName: 'Deploy API to Azure App Service'
+                  inputs:
+                    azureSubscription: 'Azure-Connection'
+                    appType: 'webAppLinux'
+                    appName: 'myapp-api-staging'
+                    package: '$(Pipeline.Workspace)/api/**/*.zip'
+                    runtimeStack: 'DOTNETCORE|9.0'
+                    startUpCommand: 'dotnet AspireReact.Api.dll'
+
+                # Configure API environment variables
+                - task: AzureAppServiceSettings@1
+                  displayName: 'Configure API app settings'
+                  inputs:
+                    azureSubscription: 'Azure-Connection'
+                    appName: 'myapp-api-staging'
+                    resourceGroupName: 'myapp-rg'
+                    appSettings: |
+                      [
+                        {
+                          "name": "ASPNETCORE_ENVIRONMENT",
+                          "value": "Staging"
+                        },
+                        {
+                          "name": "OTEL_EXPORTER_OTLP_ENDPOINT",
+                          "value": "https://otel-collector.staging.example.com"
+                        },
+                        {
+                          "name": "ConnectionStrings__postgres",
+                          "value": "$(POSTGRES_CONNECTION_STRING)",
+                          "slotSetting": false
+                        }
+                      ]
+
+                # Deploy frontend to Azure Static Web Apps (example)
+                - task: AzureStaticWebApp@0
+                  displayName: 'Deploy frontend to Azure Static Web Apps'
+                  inputs:
+                    app_location: '$(Pipeline.Workspace)/frontend'
+                    azure_static_web_apps_api_token: $(AZURE_STATIC_WEB_APPS_API_TOKEN)
+                    action: 'upload'
+
+  - stage: Deploy_Production
+    displayName: 'Deploy to Production'
+    dependsOn: Deploy_Staging
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/aspire-9.5-baseline'))
+    jobs:
+      - deployment: DeployProduction
+        displayName: 'Deploy to Production Environment'
+        environment: 'production'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                # Similar steps as staging with production-specific configuration
+                - download: current
+                  artifact: api
+
+                - download: current
+                  artifact: frontend
+
+                - task: AzureWebApp@1
+                  displayName: 'Deploy API to Production'
+                  inputs:
+                    azureSubscription: 'Azure-Connection'
+                    appType: 'webAppLinux'
+                    appName: 'myapp-api-prod'
+                    package: '$(Pipeline.Workspace)/api/**/*.zip'
+                    runtimeStack: 'DOTNETCORE|9.0'
+
+                # ⚠️  Production STILL uses 100% telemetry sampling (expensive)
+                - task: AzureAppServiceSettings@1
+                  displayName: 'Configure production app settings'
+                  inputs:
+                    azureSubscription: 'Azure-Connection'
+                    appName: 'myapp-api-prod'
+                    resourceGroupName: 'myapp-rg'
+                    appSettings: |
+                      [
+                        {
+                          "name": "ASPNETCORE_ENVIRONMENT",
+                          "value": "Production"
+                        },
+                        {
+                          "name": "OTEL_EXPORTER_OTLP_ENDPOINT",
+                          "value": "https://otel-collector.prod.example.com"
+                        }
+                      ]
+
+# ⚠️  ASPIRE 9.5 PIPELINE LIMITATIONS:
+#
+# 1. Manual deployment configuration (no auto-generated manifests)
+# 2. No Dockerfile generation - must create manually
+# 3. HTTPS-only OTLP (certificate issues in local dev)
+# 4. 100% telemetry sampling (high production costs)
+# 5. Manual Polly resilience configuration
+# 6. No .WaitFor() - must handle service dependencies manually
+#
+# MIGRATION RECOMMENDATION:
+# See aspire-13-pipeline.yml for improvements in .NET 10 + Aspire 13
