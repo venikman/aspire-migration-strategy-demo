@@ -1,6 +1,6 @@
 # AspireReact - Aspire 9.5 vs 13 Migration Strategy Demo
 
-> **Production-ready example** comparing .NET Aspire 9.5 and Aspire 13 implementations with comprehensive migration analysis, cost calculations, and decision frameworks.
+> **Production-ready example** comparing .NET Aspire 9.5 and Aspire 13 implementations with comprehensive migration analysis and decision frameworks.
 
 ---
 
@@ -14,9 +14,8 @@ This repository demonstrates **two migration strategies** for .NET Aspire applic
 **Includes**:
 - ✅ Working Aspire 13 implementation (this branch)
 - ✅ Working Aspire 9.5 implementation ([`aspire-9.5-baseline`](../../tree/aspire-9.5-baseline) branch)
-- ✅ Comprehensive ADR with cost-benefit analysis
+- ✅ Comprehensive ADR with technical analysis
 - ✅ Side-by-side code comparisons
-- ✅ ROI calculator
 - ✅ Decision tree framework
 - ✅ CI/CD pipeline examples
 
@@ -40,7 +39,7 @@ This repository demonstrates a **full-stack application** implemented in **both 
 - **Observability**: End-to-end distributed tracing from browser to API
 - **Production Patterns**: Environment-based sampling, health checks, resilience policies
 
-**Key Difference**: Aspire 13 requires **70% less configuration code** and provides **90% telemetry cost savings** compared to Aspire 9.5.
+**Key Difference**: Aspire 13 requires **70% less configuration code** and provides **environment-based sampling** (10% prod, 100% dev) compared to Aspire 9.5's static 100% sampling.
 
 ---
 
@@ -631,16 +630,16 @@ For detailed analysis of .NET Aspire versions, migration decisions, and trade-of
 
 ### 📄 [ADR: Aspire 9.5 → 13 Migration](./ADR_ASPIRE_MIGRATION_9_TO_13.md)
 **Topics covered**:
-- Cost-benefit analysis (90% telemetry cost reduction)
+- Technical benefits (environment-based sampling, built-in resilience)
 - Migration complexity assessment
 - Breaking changes and mitigation strategies
 - PostgreSQL integration considerations
 - Risk assessment and rollback plan
 
 **Key Findings**:
-- **ROI**: 2-5 day migration pays for itself in < 1 week of production savings
+- **Code Reduction**: 50 lines of Polly → 1 line with AddStandardResilienceHandler
 - **Performance**: 40% faster dashboard, 2x faster container startup
-- **Recommendation**: Migrate to Aspire 13 (benefits outweigh costs)
+- **Recommendation**: Migrate to Aspire 13 (technical benefits outweigh migration effort)
 
 ### 📄 [Aspire Version Comparison](./ASPIRE_VERSION_COMPARISON.md)
 **Visual guide showing**:
@@ -659,7 +658,7 @@ For detailed analysis of .NET Aspire versions, migration decisions, and trade-of
 
 This repository uses **.NET Aspire 13.0.2** for the following reasons:
 
-1. **Environment-Based Sampling**: 90% cost reduction in production (10% sampling vs 100%)
+1. **Environment-Based Sampling**: Reduced telemetry volume in production (10% sampling vs 100%)
 2. **Built-in Resilience**: One line vs 50 lines of Polly configuration
 3. **Vite Support**: First-class React integration with `AddViteApp()`
 4. **Service Dependencies**: `.WaitFor()` ensures proper startup order
@@ -675,9 +674,8 @@ This repository uses **.NET Aspire 13.0.2** for the following reasons:
 **Not sure which strategy is right for you?**
 
 1. **[Decision Tree](./docs/decision-tree.md)** - Interactive guide for choosing your migration path
-2. **[Cost Calculator](./tools/aspire-cost-calculator.md)** - Calculate ROI for your specific scenario
-3. **[Feature Comparison](./docs/feature-implementation-comparison.md)** - See code differences side-by-side
-4. **[CI/CD Examples](./.azure-pipelines/)** - Compare deployment pipelines
+2. **[Feature Comparison](./docs/feature-implementation-comparison.md)** - See code differences side-by-side
+3. **[CI/CD Examples](./.azure-pipelines/)** - Compare deployment pipelines
 
 **Repository Branches**:
 - `main` - Aspire 13 implementation (this branch)
@@ -685,8 +683,8 @@ This repository uses **.NET Aspire 13.0.2** for the following reasons:
 
 **Key Findings**:
 - **Code Reduction**: 70% less boilerplate with Aspire 13
-- **Cost Savings**: 90% reduction in telemetry costs (10% sampling vs 100%)
+- **Telemetry Volume**: 90% reduction in production (10% sampling vs 100%)
 - **Performance**: 40% faster dashboard, 2x faster container startup
-- **Break-even**: Migration pays for itself in < 1 week for high-traffic apps
+- **Maintenance**: 1 line vs 50 lines for resilience configuration
 
 For detailed migration analysis, refer to the [ADR documentation](#-architecture-decision-records) above
